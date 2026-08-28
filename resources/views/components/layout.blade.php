@@ -7,12 +7,13 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <title>Admin DashBoard</title>
 </head>
-<body class="bg-background text-foreground">
+<body class="bg-gray-100">
     <x-layout.nav>
 
     </x-layout.nav>
 
-    <main class="max-w-7xl mx-auto px-6">
+    <main class="max-w-7xl mx-auto px-6 flex flex-col items-center">
+        <h1 class="text-3xl font-bold text-gray-900 mt-8">Admin Dashboard</h1>
         {{ $slot }}
     </main>
 </body>
