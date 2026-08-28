@@ -7,7 +7,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <title>Admin DashBoard</title>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-300">
     <x-layout.nav>
 
     </x-layout.nav>
