@@ -17,7 +17,7 @@ class FirebaseService
             //Path to service account file
             ->withServiceAccount(storage_path('app/firebase/firebase_credentials.json'))
             //Change This to firebase realtime database path
-            ->withDatabaseUri('https://product-inventory-app-18b24-default-rtdb.firebaseio.com');
+            ->withDatabaseUri('https://product-inventory-29475-default-rtdb.firebaseio.com');
 
         $this->database = $factory->createDatabase();
         $this->messaging = $factory->createMessaging();

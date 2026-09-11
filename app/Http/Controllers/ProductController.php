@@ -34,8 +34,10 @@ class ProductController extends Controller
         $product = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
-            'quantity' => ['required', 'integer', 'min:0'],
+            'productType' => ['required', 'string', 'min:0'],
         ]);
+
+        $product['price'] = (float) $product['price'];
 
         $reference = $this->firebaseService
             ->getDatabase()
@@ -83,8 +85,10 @@ class ProductController extends Controller
         $productData = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
-            'quantity' => ['required', 'integer', 'min:0'],
+            'productType' => ['required', 'string', 'min:0'],
         ]);
+
+        $productData['price'] = (float) $productData['price'];
 
         $reference = $this->firebaseService
             ->getDatabase()

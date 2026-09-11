@@ -1,8 +1,6 @@
 <x-layout>
     <div class="max-w-4xl mx-auto mt-8">
-
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-
             <div class="p-6 pb-4 border-b border-gray-100 bg-white">
                 <h2 class="text-xl font-bold text-gray-800">Product Inventory</h2>
                 <p class="text-sm text-gray-500 mt-1">Manage your current products, prices, and stock levels.</p>
@@ -10,51 +8,113 @@
 
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
-
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th class="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Product Name</th>
                             <th class="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</th>
-                            <th class="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Quantity</th>
+                            <th class="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Product Type</th>
                             <th class="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
                         </tr>
                     </thead>
 
-                    <tbody class="divide-y divide-gray-100">
-                        @forelse ($products as $productId => $product)
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium text-gray-800">{{ $product['name'] }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-600">{{ number_format($product['price'], 2) }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-600">{{ $product['quantity'] }}</td>
-
-                                <td class="px-6 py-4 text-sm flex gap-3">
-
-                                    <a href="{{ route('edit', $productId) }}" class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium rounded-md transition-colors">
-                                        Update
-                                    </a>
-                                    <form method="POST" action="/delete/{{ $productId }}" class="inline-block">
-                                        @csrf
-                                        @method("DELETE")
-                                        <button type="submit" class="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 font-medium rounded-md transition-colors">
-                                            Delete
-                                        </button>
-                                    </form>
-
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="px-6 py-12 text-center text-gray-500">
-                                    <p class="text-base font-medium">No products available.</p>
-                                    <p class="text-sm mt-1">Get started by creating a new product.</p>
-                                </td>
-                            </tr>
-                        @endforelse
+                    <!-- We added an ID here and removed the  -->
+                    <tbody id="product-list" class="divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                                <p class="text-base font-medium">Loading products...</p>
+                            </td>
+                        </tr>
                     </tbody>
-
                 </table>
             </div>
-
         </div>
     </div>
 </x-layout>
+<script type="module">
+    // 1. Import Firebase Core and Realtime Database
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // 2. Paste your Web App config here (from Project Settings)
+    const firebaseConfig = {
+
+    apiKey: "AIzaSyAzYBsr0iAE5JgGGvDZgNc8hu7Q2s8FyMM",
+
+    authDomain: "product-inventory-29475.firebaseapp.com",
+
+    databaseURL: "https://product-inventory-29475-default-rtdb.firebaseio.com",
+
+    projectId: "product-inventory-29475",
+
+    storageBucket: "product-inventory-29475.firebasestorage.app",
+
+    messagingSenderId: "781145020965",
+
+    appId: "1:781145020965:web:e5f3094644c1d842053dcc",
+
+    measurementId: "G-1CJ5KH0C2D"
+
+  };
+
+
+    // 3. Initialize Firebase and the Realtime Database
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const tbody = document.getElementById('product-list');
+
+    // 4. Create a reference to the 'products' node (matches your controller)
+    const productsRef = ref(db, 'products');
+
+    // 5. Listen for changes in real-time
+    onValue(productsRef, (snapshot) => {
+        tbody.innerHTML = ""; // Clear current table contents
+
+        const productsData = snapshot.val(); // Get the JSON object
+
+        // If the database is empty or the 'products' node doesn't exist
+        if (!productsData) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                        <p class="text-base font-medium">No products available.</p>
+                        <p class="text-sm mt-1">Get started by creating a new product.</p>
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        // Realtime Database returns an object of objects, so we loop through the keys
+        Object.entries(productsData).forEach(([productId, product]) => {
+
+            // Format price to 2 decimal places
+            const formattedPrice = Number(product.price).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+            // Build the table row
+            const row = `
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 text-sm font-medium text-gray-800">${product.name}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${formattedPrice}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${product.productType}</td>
+                    <td class="px-6 py-4 text-sm flex gap-3">
+                        <a href="/edit/${productId}" class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium rounded-md transition-colors">
+                            Update
+                        </a>
+                        <form method="POST" action="/delete/${productId}" class="inline-block">
+                            <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="_method" value="DELETE">
+                            <button type="submit" class="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 font-medium rounded-md transition-colors">
+                                Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            `;
+
+            tbody.innerHTML += row;
+        });
+    });
+</script>
