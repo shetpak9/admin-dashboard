@@ -12,7 +12,6 @@
                         <tr>
                             <th class="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Product Name</th>
                             <th class="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</th>
-                            <th class="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Product Type</th>
                             <th class="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
                         </tr>
                     </thead>
@@ -20,7 +19,7 @@
                     <!-- We added an ID here and removed the  -->
                     <tbody id="product-list" class="divide-y divide-gray-100">
                         <tr>
-                            <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                            <td colspan="3" class="px-6 py-12 text-center text-gray-500">
                                 <p class="text-base font-medium">Loading products...</p>
                             </td>
                         </tr>
@@ -36,25 +35,15 @@
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     // 2. Paste your Web App config here (from Project Settings)
-    const firebaseConfig = {
-
-    apiKey: "AIzaSyAzYBsr0iAE5JgGGvDZgNc8hu7Q2s8FyMM",
-
-    authDomain: "product-inventory-29475.firebaseapp.com",
-
-    databaseURL: "https://product-inventory-29475-default-rtdb.firebaseio.com",
-
-    projectId: "product-inventory-29475",
-
-    storageBucket: "product-inventory-29475.firebasestorage.app",
-
-    messagingSenderId: "781145020965",
-
-    appId: "1:781145020965:web:e5f3094644c1d842053dcc",
-
-    measurementId: "G-1CJ5KH0C2D"
-
-  };
+     const firebaseConfig = {
+        apiKey: @json($firebaseConfig['api_key']),
+        authDomain: @json($firebaseConfig['auth_domain']),
+        databaseURL: @json($firebaseConfig['database_url']),
+        projectId: @json($firebaseConfig['project_id']),
+        storageBucket: @json($firebaseConfig['storage_bucket']),
+        messagingSenderId: @json($firebaseConfig['messaging_sender_id']),
+        appId: @json($firebaseConfig['app_id']),
+    };
 
 
     // 3. Initialize Firebase and the Realtime Database
@@ -62,6 +51,23 @@
     const db = getDatabase(app);
 
     const tbody = document.getElementById('product-list');
+    if (!tbody) {
+        // This page does not contain the product table.
+    } else {
+        const productsRef = ref(db, 'products');
+
+        onValue(productsRef, (snapshot) => {
+            // existing rendering code
+        }, (error) => {
+            console.error('Firebase read failed:', error);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center text-red-500">
+                        Unable to load products.
+                    </td>
+                </tr>`;
+        });
+    }
 
     // 4. Create a reference to the 'products' node (matches your controller)
     const productsRef = ref(db, 'products');
@@ -98,7 +104,6 @@
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-6 py-4 text-sm font-medium text-gray-800">${product.name}</td>
                     <td class="px-6 py-4 text-sm text-gray-600">${formattedPrice}</td>
-                    <td class="px-6 py-4 text-sm text-gray-600">${product.productType}</td>
                     <td class="px-6 py-4 text-sm flex gap-3">
                         <a href="/edit/${productId}" class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium rounded-md transition-colors">
                             Update
@@ -116,5 +121,14 @@
 
             tbody.innerHTML += row;
         });
+    },
+    (error) => {
+        console.error('Firebase read failed:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="px-6 py-12 text-center text-red-500">
+                    Unable to load products.
+                </td>
+            </tr>`;
     });
 </script>

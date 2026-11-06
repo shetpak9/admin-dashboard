@@ -8,9 +8,7 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function __construct(private FirebaseService $firebaseService)
-    {
-    }
+    public function __construct(private FirebaseService $firebaseService) {}
 
     public function index()
     {
@@ -19,13 +17,15 @@ class ProductController extends Controller
             ->getReference('products')
             ->getValue() ?? [];
 
-         /* return response()->json($products);  */
-         return view('index', [
-            'products' => $products
-         ]);
+        /* return response()->json($products); */
+        return view('index', [
+            'products' => $products,
+            'firebaseConfig' => config('services.firebase'),
+        ]);
     }
 
-    public function create(){
+    public function create()
+    {
         return view('create');
     }
 
@@ -34,7 +34,6 @@ class ProductController extends Controller
         $product = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
-            'productType' => ['required', 'string', 'min:0'],
         ]);
 
         $product['price'] = (float) $product['price'];
@@ -47,7 +46,8 @@ class ProductController extends Controller
         return redirect('add');
     }
 
-    public function edit(string $product){
+    public function edit(string $product)
+    {
         $productData = $this->firebaseService
             ->getDatabase()
             ->getReference("products/{$product}")
@@ -85,7 +85,6 @@ class ProductController extends Controller
         $productData = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
-            'productType' => ['required', 'string', 'min:0'],
         ]);
 
         $productData['price'] = (float) $productData['price'];
