@@ -17,11 +17,15 @@ class FirebaseService
 
     public function __construct()
     {
+        $credentials = (string) config('services.firebase.credentials');
+
+        if ($credentials !== '' && ! preg_match('/^(?:[A-Za-z]:[\\\\\/]|[\\\\\/])/', $credentials)) {
+            $credentials = base_path($credentials);
+        }
+
         $factory = (new Factory)
-            // Path to service account file
-            ->withServiceAccount(storage_path('app/firebase/firebase_credentials.json'))
-            // Change This to firebase realtime database path
-            ->withDatabaseUri('https://product-inventory-29475-default-rtdb.firebaseio.com');
+            ->withServiceAccount($credentials)
+            ->withDatabaseUri((string) config('services.firebase.database_url'));
 
         $this->auth = $factory->createAuth();
         $this->database = $factory->createDatabase();

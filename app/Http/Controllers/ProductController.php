@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ActivityLogService;
 use App\Services\FirebaseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function __construct(private FirebaseService $firebaseService) {}
+    public function __construct(
+        private FirebaseService $firebaseService,
+        private ActivityLogService $activityLogService,
+    ) {}
 
     public function index()
     {
@@ -20,7 +24,15 @@ class ProductController extends Controller
         /* return response()->json($products); */
         return view('index', [
             'products' => $products,
-            'firebaseConfig' => config('services.firebase'),
+            'firebaseConfig' => [
+                'api_key' => config('services.firebase.api_key'),
+                'auth_domain' => config('services.firebase.auth_domain'),
+                'database_url' => config('services.firebase.database_url'),
+                'project_id' => config('services.firebase.project_id'),
+                'storage_bucket' => config('services.firebase.storage_bucket'),
+                'messaging_sender_id' => config('services.firebase.messaging_sender_id'),
+                'app_id' => config('services.firebase.app_id'),
+            ],
         ]);
     }
 
@@ -42,6 +54,7 @@ class ProductController extends Controller
             ->getDatabase()
             ->getReference('products')
             ->push($product);
+        $this->recordAdminActivity($request, 'product.created', (string) $reference->getKey(), $product);
 
         return redirect('add');
     }
@@ -98,11 +111,12 @@ class ProductController extends Controller
         }
 
         $reference->update($productData);
+        $this->recordAdminActivity($request, 'product.updated', $product, $productData);
 
         return to_route('index');
     }
 
-    public function destroy(string $product)
+    public function destroy(Request $request, string $product)
     {
         $reference = $this->firebaseService
             ->getDatabase()
@@ -113,7 +127,28 @@ class ProductController extends Controller
         }
 
         $reference->remove();
+        $this->recordAdminActivity($request, 'product.deleted', $product);
 
         return to_route('index');
+    }
+
+    private function recordAdminActivity(Request $request, string $action, string $entityId, array $details = []): void
+    {
+        if ($request->session()->get('admin_authenticated') !== true) {
+            return;
+        }
+
+        $adminUsername = (string) $request->session()->get('admin_username');
+
+        $this->activityLogService->record([
+            'userUid' => $adminUsername,
+            'userName' => $adminUsername,
+            'userRole' => 'admin',
+            'action' => $action,
+            'entityType' => 'product',
+            'entityId' => $entityId,
+            'details' => $details,
+            'ipAddress' => $request->ip(),
+        ]);
     }
 }

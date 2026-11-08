@@ -3,10 +3,10 @@
         <div class="flex gap-2">
 
             <!-- Add Product Link -->
-            <a href="/add" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors
+{{--             <a href="/add" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors
                 {{ request()->is('add') ? 'text-blue-700 bg-blue-50' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
                 Add Product
-            </a>
+            </a> --}}
 
             <!-- View Product Link (Assuming the route is just '/') -->
             <a href="/" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors

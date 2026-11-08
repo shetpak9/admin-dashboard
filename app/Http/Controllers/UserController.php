@@ -4,17 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\DeleteUserRequest;
 use App\Http\Requests\DisableUserRequest;
-use App\Models\AdminAuditLog;
+use App\Services\ActivityLogService;
 use App\Services\UserAdminService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Kreait\Firebase\Exception\FirebaseException;
 
 class UserController extends Controller
 {
-    public function __construct(private UserAdminService $userAdminService) {}
+    public function __construct(
+        private UserAdminService $userAdminService,
+        private ActivityLogService $activityLogService,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -49,11 +54,13 @@ class UserController extends Controller
     {
         try {
             $this->userAdminService->disable($uid);
-            $this->audit($request, 'disable', $uid, ['reason' => $request->validated('reason')]);
+            $this->audit($request, 'users.disable', $uid, ['reason' => $request->validated('reason')]);
 
             return back()->with('success', 'The account was disabled and its sessions were revoked.');
         } catch (FirebaseException) {
             return back()->with('error', 'Unable to disable this account.');
+        } catch (\Throwable) {
+            return back()->with('error', 'The account was changed, but its activity could not be recorded.');
         }
     }
 
@@ -61,11 +68,13 @@ class UserController extends Controller
     {
         try {
             $this->userAdminService->enable($uid);
-            $this->audit($request, 'enable', $uid);
+            $this->audit($request, 'users.enable', $uid);
 
             return back()->with('success', 'The account was enabled.');
         } catch (FirebaseException) {
             return back()->with('error', 'Unable to enable this account.');
+        } catch (\Throwable) {
+            return back()->with('error', 'The account was changed, but its activity could not be recorded.');
         }
     }
 
@@ -73,11 +82,13 @@ class UserController extends Controller
     {
         try {
             $this->userAdminService->revokeSessions($uid);
-            $this->audit($request, 'revoke_sessions', $uid);
+            $this->audit($request, 'users.sessions_revoked', $uid);
 
             return back()->with('success', 'All sessions were revoked.');
         } catch (FirebaseException) {
             return back()->with('error', 'Unable to revoke this user\'s sessions.');
+        } catch (\Throwable) {
+            return back()->with('error', 'Sessions were revoked, but the activity could not be recorded.');
         }
     }
 
@@ -94,29 +105,82 @@ class UserController extends Controller
     {
         try {
             $snapshot = $this->userAdminService->delete($uid);
-            $this->audit($request, 'delete', $uid, ['snapshot' => $snapshot]);
+            $this->audit($request, 'users.deleted', $uid, ['snapshot' => $snapshot]);
 
             return to_route('users.index')->with('success', 'The user account was deleted.');
         } catch (\RuntimeException $exception) {
             return back()->with('error', $exception->getMessage());
         } catch (FirebaseException) {
             return back()->with('error', 'Unable to delete this user. No Auth account was removed.');
+        } catch (\Throwable) {
+            return back()->with('error', 'The account was deleted, but the activity could not be recorded.');
         }
     }
 
-    public function auditLog(): View
+    public function auditLog(Request $request): View|RedirectResponse
     {
-        return view('audit-log.index', ['logs' => AdminAuditLog::query()->latest('created_at')->paginate(20)]);
+        try {
+            $filters = Validator::make($request->query(), [
+                'search' => ['nullable', 'string', 'max:128'],
+                'userUid' => ['nullable', 'string', 'max:128'],
+                'userRole' => ['nullable', 'in:admin,customer,seller'],
+                'actionCategory' => ['nullable', 'in:Authentication,Profile,Cart,Orders,Payments,Products,Seller'],
+                'action' => ['nullable', Rule::in([
+                    'auth.registered',
+                    'auth.login',
+                    'auth.logout',
+                    'auth.password_reset_requested',
+                    'profile.created',
+                    'profile.updated',
+                    'profile.address_added',
+                    'profile.address_updated',
+                    'profile.address_deleted',
+                    'cart.item_added',
+                    'cart.item_removed',
+                    'cart.quantity_updated',
+                    'order.created',
+                    'order.cancelled',
+                    'payment.checkout_initiated',
+                    'payment.checkout_opened',
+                    'payment.returned_from_checkout',
+                    'product.created',
+                    'product.updated',
+                    'product.deleted',
+                    'seller.order_status_updated',
+                    'seller.profile_updated',
+                ])],
+                'dateFrom' => ['nullable', 'date'],
+                'dateTo' => ['nullable', 'date', 'after_or_equal:dateFrom'],
+            ])->validate();
+
+            return view('audit-log.index', [
+                'logs' => $this->activityLogService->paginate($filters),
+                'filters' => $filters,
+                'actionOptions' => $this->activityLogService->actionOptions(),
+            ]);
+        } catch (\Throwable) {
+            return view('audit-log.index', [
+                'logs' => new LengthAwarePaginator([], 0, 20),
+                'filters' => $request->query(),
+                'actionOptions' => $this->activityLogService->actionOptions(),
+                'error' => 'Activity logs are temporarily unavailable. Please try again later.',
+            ]);
+        }
     }
 
     private function audit(Request $request, string $action, string $uid, array $details = []): void
     {
-        AdminAuditLog::create([
-            'admin_username' => (string) $request->session()->get('admin_username'),
+        $adminUsername = (string) $request->session()->get('admin_username');
+
+        $this->activityLogService->record([
+            'userUid' => $adminUsername,
+            'userName' => $adminUsername,
+            'userRole' => 'admin',
             'action' => $action,
-            'target_uid' => $uid,
+            'entityType' => 'user',
+            'entityId' => $uid,
             'details' => $details,
-            'ip_address' => $request->ip(),
+            'ipAddress' => $request->ip(),
         ]);
     }
 }
